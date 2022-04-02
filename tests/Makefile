@@ -2,7 +2,7 @@
 # Makefile to compile and run Arduino programs natively on Linux or MacOS.
 
 APP_NAME := tests
-ARDUINO_LIBS := ABus AUnit
+ARDUINO_LIBS := ArduinoCaster AUnit
 include ../../EpoxyDuino/EpoxyDuino.mk
 
 test: all

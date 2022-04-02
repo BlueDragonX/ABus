@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <AUnit.h>
-#include <ABus.h>
+#include <Caster.h>
 
 using namespace aunit;
-using namespace ABus;
+using namespace Caster;
 
 // Test boilerplate.
 void setup() {
