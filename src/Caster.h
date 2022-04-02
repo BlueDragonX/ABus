@@ -37,7 +37,7 @@ class Node {
 
         // Filter events to this node. Return true for events that should be
         // sent to this node.
-        virtual bool filter(const T& event) const { return true; }
+        virtual bool filter(const T&) const { return true; }
 };
 
 // Bus connects a series of nodes which send and receive events. Events are
