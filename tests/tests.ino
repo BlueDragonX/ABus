@@ -59,8 +59,8 @@ class MockNode : public Node<uint8_t> {
             ++send_count_;
         }
 
-        bool filter(Node<uint8_t>* sender, const uint8_t& id) const override {
-            return filter1_ == -1 || filter1_ == id || filter2_ == id;
+        bool filter(const uint8_t& event) const override {
+            return filter1_ == 0 || filter1_ == event || filter2_ == event;
         }
 };
 
@@ -77,7 +77,6 @@ test(BusTest, SingleBroadcast) {
     n3.filter1_ = 1;
 
     Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
-
     auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
     bus.loop();
 
@@ -103,7 +102,6 @@ test(BusTest, MultiBroadcast) {
     n3.filter2_ = 2;
 
     Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
-
     auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
     bus.loop();
 
@@ -127,7 +125,6 @@ test(BusTest, MultiReceive) {
     n2.filter2_ = 2;
 
     Node<uint8_t>* nodes[] = {&n1, &n2};
-
     auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
     bus.loop();
 
@@ -150,12 +147,12 @@ test(BusTest, MultiLoop) {
     n3.filter2_ = 2;
 
     Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
-
     auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
     bus.loop();
 
     assertEqual(n1.send_count_, 0);
-    assertEqual(n2.send_count_, 0);
+    assertEqual(n2.send_count_, 1);
+    assertEqual(n1.receive_, n2.send_[0]);
     assertEqual(n3.send_count_, 1);
     assertEqual(n1.receive_, n3.send_[0]);
 
@@ -163,8 +160,11 @@ test(BusTest, MultiLoop) {
 
     bus.loop();
 
-    assertEqual(n1.send_count_, 0);
-    assertEqual(n2.send_count_, 0);
+    assertEqual(n1.send_count_, 1);
+    assertEqual(n2.receive_, n1.send_[0]);
+    assertEqual(n2.send_count_, 2);
+    assertEqual(n1.receive_, n2.send_[0]);
+    assertEqual(n1.receive_, n2.send_[0]);
     assertEqual(n3.send_count_, 3);
     assertEqual(n1.receive_, n3.send_[0]);
     assertEqual(n1.receive_, n3.send_[1]);

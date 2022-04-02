@@ -25,8 +25,9 @@ class Node {
         virtual ~Node() = default;
 
         // Receive events from a node. The node calls broadcast() to put events
-        // on the bus. Events are sent to all nodes whose filter matches the
-        // broadcast event.
+        // on the bus. Events are sent to all other nodes whose filters matches
+        // the broadcast event. The event is not sent back to the broadcasting
+        // node.
         virtual void receive(const Broadcast<T>& broadcast) = 0;
 
         // Send an event to the node. Every received event is sent to every node
@@ -35,10 +36,8 @@ class Node {
         virtual void send(const T& event) = 0;
 
         // Filter events to this node. Return true for events that should be
-        // sent to this node. A pointer to the sending node is provided. This
-        // allows a node to filter out events from specific senders. The most
-        // common case is for a node to filter events sent from itself.
-        virtual bool filter(Node<T>* sender, const T& event) const { return true; }
+        // sent to this node.
+        virtual bool filter(const T& event) const { return true; }
 };
 
 // Bus connects a series of nodes which send and receive events. Events are
@@ -63,8 +62,8 @@ class Bus {
 
             private:
                 Bus* bus_;
-                Node<T>* sender_;
-                BroadcastImpl(Bus* bus) : bus_(bus), sender_(nullptr) {}
+                uint8_t sender_;
+                BroadcastImpl(Bus* bus) : bus_(bus) {}
                 friend class Bus;
         };
 
@@ -77,7 +76,7 @@ class Bus {
 template <typename T>
 void Bus<T>::loop() {
     for (uint8_t i = 0; i < count_; i++) {
-        broadcast_.sender_ = nodes_[i];
+        broadcast_.sender_ = i;
         nodes_[i]->receive(broadcast_);
     }
 }
@@ -85,7 +84,7 @@ void Bus<T>::loop() {
 template <typename T>
 void Bus<T>::BroadcastImpl::operator()(const T& event) const {
     for (uint8_t i = 0; i < bus_->count_; i++) {
-        if (bus_->nodes_[i]->filter(sender_, event)) {
+        if (sender_ != i && bus_->nodes_[i]->filter(event)) {
             bus_->nodes_[i]->send(event);
         }
     }
