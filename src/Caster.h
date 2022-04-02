@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-namespace ABus {
+namespace Caster {
 
 // Callable used by nodes to broadcast events to the bus.
 template <typename T>
@@ -90,6 +90,6 @@ void Bus<T>::BroadcastImpl::operator()(const T& event) const {
     }
 }
 
-}  // namespace ABus
+}  // namespace Caster
 
 #endif  // _ABUS_H_
