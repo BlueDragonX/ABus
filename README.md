@@ -1,2 +1,2 @@
-# ABus
-A basic event bus for Arduino.
+# Caster
+A simple event bus for Arduino.
