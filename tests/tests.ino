@@ -3,7 +3,146 @@
 #include <Caster.h>
 
 using namespace aunit;
-using namespace Caster;
+
+namespace Caster {
+
+// A mock bus node for testing.
+class TestNode : public Node<uint8_t> {
+    public:
+        TestNode(int buffer_size) :
+            handle_(new uint8_t[buffer_size]),
+            handle_size_(buffer_size),
+            handle_count_(0) {
+            for (int i = 0; i < handle_size_; i++) {
+                handle_[i] = 0;
+            }
+        }
+
+        uint8_t emit0_ = 0;
+        uint8_t emit1_ = 0;
+        uint8_t* handle_;
+        int handle_size_;
+        int handle_count_;
+
+        ~TestNode() {
+            delete handle_;
+        }
+
+        void handle(const uint8_t& event) override {
+            if (handle_count_ < handle_size_) {
+                handle_[handle_count_] = event;
+            }
+            ++handle_count_;
+        }
+
+        void emit(const Yield<uint8_t>& yield) override {
+            if (emit0_ != 0) {
+                yield(emit0_);
+            }
+            if (emit1_ != 0) {
+                yield(emit1_);
+            }
+        }
+};
+
+test(BusTest, SingleBroadcast) {
+    TestNode n1 = TestNode(1);
+    n1.emit0_ = 1;
+
+    TestNode n2 = TestNode(1);
+    n2.emit0_ = 0;
+
+    TestNode n3 = TestNode(1);
+    n3.emit0_ = 0;
+
+    Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
+    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
+    bus.loop();
+
+    assertEqual(n1.handle_count_, 0);
+    assertEqual(n2.handle_count_, 1);
+    assertEqual(n1.emit0_, n2.handle_[0]);
+    assertEqual(n3.handle_count_, 1);
+    assertEqual(n1.emit0_, n3.handle_[0]);
+}
+
+test(BusTest, MultiBroadcast) {
+    TestNode n1 = TestNode(1);
+    n1.emit0_ = 1;
+
+    TestNode n2 = TestNode(1);
+    n2.emit0_ = 2;
+
+    TestNode n3 = TestNode(2);
+    n3.emit0_ = 0;
+
+    Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
+    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
+    bus.loop();
+
+    assertEqual(n1.handle_count_, 1);
+    assertEqual(n2.emit0_, n1.handle_[0]);
+    assertEqual(n2.handle_count_, 1);
+    assertEqual(n1.emit0_, n2.handle_[0]);
+    assertEqual(n3.handle_count_, 2);
+    assertEqual(n1.emit0_, n3.handle_[0]);
+    assertEqual(n2.emit0_, n3.handle_[1]);
+}
+
+test(BusTest, MultiReceive) {
+    TestNode n1 = TestNode(1);
+    n1.emit0_ = 1;
+    n1.emit1_ = 2;
+
+    TestNode n2 = TestNode(2);
+    n2.emit0_ = 0;
+
+    Node<uint8_t>* nodes[] = {&n1, &n2};
+    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
+    bus.loop();
+
+    assertEqual(n1.handle_count_, 0);
+    assertEqual(n2.handle_count_, 2);
+    assertEqual(n1.emit0_, n2.handle_[0]);
+    assertEqual(n1.emit1_, n2.handle_[1]);
+}
+
+test(BusTest, MultiLoop) {
+    TestNode n1 = TestNode(1);
+    n1.emit0_ = 1;
+
+    TestNode n2 = TestNode(1);
+    n2.emit0_ = 0;
+
+    TestNode n3 = TestNode(3);
+    n3.emit0_ = 0;
+
+    Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
+    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
+    bus.loop();
+
+    assertEqual(n1.handle_count_, 0);
+    assertEqual(n2.handle_count_, 1);
+    assertEqual(n1.emit0_, n2.handle_[0]);
+    assertEqual(n3.handle_count_, 1);
+    assertEqual(n1.emit0_, n3.handle_[0]);
+
+    n2.emit0_ = 2;
+
+    bus.loop();
+
+    assertEqual(n1.handle_count_, 1);
+    assertEqual(n2.emit0_, n1.handle_[0]);
+    assertEqual(n2.handle_count_, 2);
+    assertEqual(n1.emit0_, n2.handle_[0]);
+    assertEqual(n1.emit0_, n2.handle_[0]);
+    assertEqual(n3.handle_count_, 3);
+    assertEqual(n1.emit0_, n3.handle_[0]);
+    assertEqual(n1.emit0_, n3.handle_[1]);
+    assertEqual(n2.emit0_, n3.handle_[2]);
+}
+
+}  // namespace Caster
 
 // Test boilerplate.
 void setup() {
@@ -19,154 +158,3 @@ void loop() {
     delay(1);
 }
 
-// A mock bus node for testing.
-class MockNode : public Node<uint8_t> {
-    public:
-        MockNode(int buffer_size) :
-            send_(new uint8_t[buffer_size]),
-            send_size_(buffer_size),
-            send_count_(0) {
-            for (int i = 0; i < send_size_; i++) {
-                send_[i] = 0;
-            }
-        }
-
-        uint8_t receive_ = 0;
-        uint8_t receive_extra_ = 0;
-        uint8_t* send_;
-        int send_size_;
-        int send_count_;
-        int filter1_ = 0;
-        int filter2_ = 0;
-
-        ~MockNode() {
-            delete send_;
-        }
-
-        void receive(const Broadcast<uint8_t>& broadcast) override {
-            if (receive_ != 0) {
-                broadcast(receive_);
-            }
-            if (receive_extra_ != 0) {
-                broadcast(receive_extra_);
-            }
-        }
-
-        void send(const uint8_t& event) override {
-            if (send_count_ < send_size_) {
-                send_[send_count_] = event;
-            }
-            ++send_count_;
-        }
-
-        bool filter(const uint8_t& event) const override {
-            return filter1_ == 0 || filter1_ == event || filter2_ == event;
-        }
-};
-
-test(BusTest, SingleBroadcast) {
-    MockNode n1 = MockNode(1);
-    n1.receive_ = 1;
-
-    MockNode n2 = MockNode(1);
-    n2.receive_ = 0;
-    n2.filter1_ = 1;
-
-    MockNode n3 = MockNode(1);
-    n3.receive_ = 0;
-    n3.filter1_ = 1;
-
-    Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
-    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
-    bus.loop();
-
-    assertEqual(n1.send_count_, 0);
-    assertEqual(n2.send_count_, 1);
-    assertEqual(n1.receive_, n2.send_[0]);
-    assertEqual(n3.send_count_, 1);
-    assertEqual(n1.receive_, n3.send_[0]);
-}
-
-test(BusTest, MultiBroadcast) {
-    MockNode n1 = MockNode(1);
-    n1.receive_ = 1;
-    n1.filter1_ = 2;
-
-    MockNode n2 = MockNode(1);
-    n2.receive_ = 2;
-    n2.filter1_ = 1;
-
-    MockNode n3 = MockNode(2);
-    n3.receive_ = 0;
-    n3.filter1_ = 1;
-    n3.filter2_ = 2;
-
-    Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
-    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
-    bus.loop();
-
-    assertEqual(n1.send_count_, 1);
-    assertEqual(n2.receive_, n1.send_[0]);
-    assertEqual(n2.send_count_, 1);
-    assertEqual(n1.receive_, n2.send_[0]);
-    assertEqual(n3.send_count_, 2);
-    assertEqual(n1.receive_, n3.send_[0]);
-    assertEqual(n2.receive_, n3.send_[1]);
-}
-
-test(BusTest, MultiReceive) {
-    MockNode n1 = MockNode(1);
-    n1.receive_ = 1;
-    n1.receive_extra_ = 2;
-
-    MockNode n2 = MockNode(2);
-    n2.receive_ = 0;
-    n2.filter1_ = 1;
-    n2.filter2_ = 2;
-
-    Node<uint8_t>* nodes[] = {&n1, &n2};
-    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
-    bus.loop();
-
-    assertEqual(n1.send_count_, 0);
-    assertEqual(n2.send_count_, 2);
-    assertEqual(n1.receive_, n2.send_[0]);
-    assertEqual(n1.receive_extra_, n2.send_[1]);
-}
-
-test(BusTest, MultiLoop) {
-    MockNode n1 = MockNode(1);
-    n1.receive_ = 1;
-
-    MockNode n2 = MockNode(1);
-    n2.receive_ = 0;
-
-    MockNode n3 = MockNode(3);
-    n3.receive_ = 0;
-    n3.filter1_ = 1;
-    n3.filter2_ = 2;
-
-    Node<uint8_t>* nodes[] = {&n1, &n2, &n3};
-    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
-    bus.loop();
-
-    assertEqual(n1.send_count_, 0);
-    assertEqual(n2.send_count_, 1);
-    assertEqual(n1.receive_, n2.send_[0]);
-    assertEqual(n3.send_count_, 1);
-    assertEqual(n1.receive_, n3.send_[0]);
-
-    n2.receive_ = 2;
-
-    bus.loop();
-
-    assertEqual(n1.send_count_, 1);
-    assertEqual(n2.receive_, n1.send_[0]);
-    assertEqual(n2.send_count_, 2);
-    assertEqual(n1.receive_, n2.send_[0]);
-    assertEqual(n1.receive_, n2.send_[0]);
-    assertEqual(n3.send_count_, 3);
-    assertEqual(n1.receive_, n3.send_[0]);
-    assertEqual(n1.receive_, n3.send_[1]);
-    assertEqual(n2.receive_, n3.send_[2]);
-}
