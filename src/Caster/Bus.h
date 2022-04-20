@@ -1,6 +1,7 @@
 #ifndef _CASTER_BUS_H_
 #define _CASTER_BUS_H_
 
+#include <Arduino.h>
 #include "Node.h"
 #include "Yield.h"
 
