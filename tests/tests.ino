@@ -25,7 +25,7 @@ class TestNode : public Node<uint8_t> {
         int handle_count_;
 
         ~TestNode() {
-            delete handle_;
+            delete[] handle_;
         }
 
         void handle(const uint8_t& event) override {
