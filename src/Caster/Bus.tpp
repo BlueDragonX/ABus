@@ -10,9 +10,11 @@ void Bus<Event>::loop() {
 
 template <typename Event>
 void Bus<Event>::YieldImpl::operator()(const Event& event) const {
+    YieldImpl yield(bus_);
     for (uint8_t i = 0; i < bus_->count_; i++) {
         if (emitter_ != i) {
-            bus_->nodes_[i]->handle(event);
+            yield.emitter_ = i;
+            bus_->nodes_[i]->handle(event, yield);
         }
     }
 }

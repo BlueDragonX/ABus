@@ -21,6 +21,7 @@ class TestNode : public Node<uint8_t> {
         uint8_t emit0_ = 0;
         uint8_t emit1_ = 0;
         uint8_t* handle_;
+        uint8_t handle_emit_ = 0;
         int handle_size_;
         int handle_count_;
 
@@ -28,9 +29,12 @@ class TestNode : public Node<uint8_t> {
             delete[] handle_;
         }
 
-        void handle(const uint8_t& event) override {
+        void handle(const uint8_t& event, const Yield<uint8_t>& yield) override {
             if (handle_count_ < handle_size_) {
                 handle_[handle_count_] = event;
+            }
+            if (handle_emit_ != 0) {
+                yield(handle_emit_);
             }
             ++handle_count_;
         }
@@ -140,6 +144,24 @@ test(BusTest, MultiLoop) {
     assertEqual(n1.emit0_, n3.handle_[0]);
     assertEqual(n1.emit0_, n3.handle_[1]);
     assertEqual(n2.emit0_, n3.handle_[2]);
+}
+
+test(BusTest, HandleYield) {
+    TestNode n1 = TestNode(1);
+    n1.emit0_ = 1;
+    n1.handle_emit_ = 11;
+    TestNode n2 = TestNode(2);
+    n2.emit0_ = 2;
+
+    Node<uint8_t>* nodes[] = {&n1, &n2};
+    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
+    bus.loop();
+
+    assertEqual(n1.handle_count_, 1);
+    assertEqual(n1.handle_[0], n2.emit0_);
+    assertEqual(n2.handle_count_, 2);
+    assertEqual(n2.handle_[0], n1.emit0_);
+    assertEqual(n2.handle_[1], n1.handle_emit_);
 }
 
 }  // namespace Caster
