@@ -23,6 +23,9 @@ class Bus {
         // broadcasts any received events.
         void loop();
 
+        // Emit an external event directly to the bus.
+        void emit(const Event& event);
+
     private:
         class YieldImpl : public Yield<Event> {
             public:

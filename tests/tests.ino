@@ -164,6 +164,38 @@ test(BusTest, HandleYield) {
     assertEqual(n2.handle_[1], n1.handle_emit_);
 }
 
+test(BusTest, Emit) {
+    TestNode n1 = TestNode(1);
+    TestNode n2 = TestNode(1);
+
+    Node<uint8_t>* nodes[] = {&n1, &n2};
+    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
+    bus.loop();
+
+    bus.emit(4);
+    assertEqual(n1.handle_count_, 1);
+    assertEqual(n1.handle_[0], 4);
+    assertEqual(n2.handle_count_, 1);
+    assertEqual(n2.handle_[0], 4);
+}
+
+test(BusTest, EmitRecursive) {
+    TestNode n1 = TestNode(2);
+    n1.handle_emit_ = 11;
+    TestNode n2 = TestNode(2);
+
+    Node<uint8_t>* nodes[] = {&n1, &n2};
+    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
+    bus.loop();
+
+    bus.emit(4);
+    assertEqual(n1.handle_count_, 1);
+    assertEqual(n1.handle_[0], 4);
+    assertEqual(n2.handle_count_, 2);
+    assertEqual(n2.handle_[0], 11);
+    assertEqual(n2.handle_[1], 4);
+}
+
 }  // namespace Caster
 
 // Test boilerplate.
