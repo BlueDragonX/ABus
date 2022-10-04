@@ -19,6 +19,12 @@ class Bus {
         Bus(Node<Event>** nodes, uint8_t count) :
             nodes_(nodes), count_(count), yield_(this) {}
 
+        // Initialize the bus. Calls init() on all attached nodes. A node's
+        // init method may yield events to be handled by other nodes on the
+        // bus. Other nodes must be able to handle messages prior to calling
+        // their own init() without crashing.
+        void init();
+
         // Called on each main loop iteration. Calls receive on each node and
         // broadcasts any received events.
         void loop();

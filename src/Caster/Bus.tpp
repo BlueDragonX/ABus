@@ -1,6 +1,14 @@
 namespace Caster {
 
 template <typename Event>
+void Bus<Event>::init() {
+    for (uint8_t i = 0; i < count_; i++) {
+        yield_.emitter_ = i;
+        nodes_[i]->init(yield_);
+    }
+}
+
+template <typename Event>
 void Bus<Event>::loop() {
     for (uint8_t i = 0; i < count_; i++) {
         yield_.emitter_ = i;

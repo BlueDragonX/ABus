@@ -18,6 +18,7 @@ class TestNode : public Node<uint8_t> {
             }
         }
 
+        uint8_t init_ = 0;
         uint8_t emit0_ = 0;
         uint8_t emit1_ = 0;
         uint8_t* handle_;
@@ -27,6 +28,12 @@ class TestNode : public Node<uint8_t> {
 
         ~TestNode() {
             delete[] handle_;
+        }
+
+        void init(const Yield<uint8_t>& yield) override {
+            if (init_ != 0) {
+                yield(init_);
+            }
         }
 
         void handle(const uint8_t& event, const Yield<uint8_t>& yield) override {
@@ -48,6 +55,23 @@ class TestNode : public Node<uint8_t> {
             }
         }
 };
+
+test(BusTest, Init) {
+    TestNode n1 = TestNode(1);
+    n1.init_ = 1;
+
+    TestNode n2 = TestNode(1);
+    n2.init_ = 2;
+
+    Node<uint8_t>* nodes[] = {&n1, &n2};
+    auto bus = Bus<uint8_t>(nodes, sizeof(nodes)/sizeof(nodes[0]));
+    bus.init();
+
+    assertEqual(n1.handle_count_, 1);
+    assertEqual(n1.handle_[0], 2);
+    assertEqual(n2.handle_count_, 1);
+    assertEqual(n2.handle_[0], 1);
+}
 
 test(BusTest, SingleBroadcast) {
     TestNode n1 = TestNode(1);

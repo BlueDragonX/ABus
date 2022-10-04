@@ -12,6 +12,10 @@ class Node {
         Node() = default;
         virtual ~Node() = default;
 
+        // Initialize the node. Called by bus.init(). The node may yield
+        // messages at this time.
+        virtual void init(const Yield<Event>&) {};
+
         // Handle bus events. This is called on each call to yield() by other
         // nodes. Optionally respond by yielding additional events to be
         // handled by the other nodes.
