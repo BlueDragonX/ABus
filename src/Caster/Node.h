@@ -35,7 +35,7 @@ class Node {
         //
         // Calling yield halts processing in this node until the other nodes
         // return from their handle calls.
-        virtual void emit(const Yield<Event>& yield) = 0;
+        virtual void emit(const Yield<Event>&) {}
 };
 
 }  // namespace Caster
